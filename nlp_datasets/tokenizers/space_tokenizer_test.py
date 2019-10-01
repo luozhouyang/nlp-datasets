@@ -4,6 +4,7 @@ import unittest
 import tensorflow as tf
 
 from nlp_datasets.tokenizers import SpaceTokenizer
+from nlp_datasets.utils import data_dir_utils
 
 
 class SpaceTokenizerTest(unittest.TestCase):
@@ -37,12 +38,12 @@ class SpaceTokenizerTest(unittest.TestCase):
 
     def testSaveVocabFile(self):
         tokenizer = self.buildTokenizer()
-        tokenizer.save_to_vocab('data/vocab.test.txt')
+        tokenizer.save_to_vocab(data_dir_utils.get_data_file('vocab.test.txt'))
 
     def testBuildFromVocab(self):
         print('============start build from vocab=============')
         tokenizer = SpaceTokenizer()
-        tokenizer.build_from_vocab('data/vocab.test.txt')
+        tokenizer.build_from_vocab(data_dir_utils.get_data_file('vocab.test.txt'))
         print('token2id dict: ', tokenizer.token2id_dict)
         print('id2token dict: ', tokenizer.id2token_dict)
         words = tf.constant(['I', 'am', 'a', 'developer'])

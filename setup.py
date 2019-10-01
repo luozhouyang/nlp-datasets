@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        'deprecated >=1.2.5',
+        'tensorflow >= 2.0',
     ],
     license="MIT License",
     classifiers=(

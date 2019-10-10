@@ -15,12 +15,15 @@ class SpaceTokenizer(AbstractTokenizer):
             self.config['mask_token']
         ]
 
-    def _process_line(self, line):
+    def _process_line(self, line, token_filters=None):
         for w in line.split(' '):
             if w in self._special_tokens:
                 continue
             if w in self._token2id_dict:
                 continue
+            if token_filters:
+                if any(f.drop_token(w) for f in token_filters):
+                    continue
             self._token2id_dict[w] = self._index
             self._id2token_dict[self._index] = w
             self._index += 1

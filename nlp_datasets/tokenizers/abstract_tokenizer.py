@@ -5,6 +5,20 @@ import os
 import tensorflow as tf
 
 
+class TokenizerFilter(abc.ABC):
+
+    def drop_token(self, token):
+        """Drop this token from vocab file or not.
+
+        Args:
+            token: Tokenized word
+
+        Returns:
+            A python Boolean. True if drop this word, False else.
+        """
+        raise NotImplementedError()
+
+
 class AbstractTokenizer(abc.ABC):
     """Tokenizer for language. The first line of vocab file is always `0   <UNK>`."""
 
@@ -17,7 +31,13 @@ class AbstractTokenizer(abc.ABC):
         self._vocab_size_include_special_tokens = None
         self._init_()
 
-    def _process_line(self, line):
+    def _process_line(self, line, token_filters=None):
+        """Process line by line in file.
+
+        Args:
+            line: A python str, line of file
+            token_filters: An iterable of TokenFilter
+        """
         raise NotImplementedError()
 
     def _init_(self):
@@ -116,8 +136,13 @@ class AbstractTokenizer(abc.ABC):
         """Decode ids to string tokens."""
         return self._id2token_table.lookup(ids)
 
-    def build_from_corpus(self, corpus_files):
-        """Build lookup table and vocab dict from corpus files."""
+    def build_from_corpus(self, corpus_files, token_filters=None):
+        """Build lookup table and vocab dict from corpus files.
+
+        Args:
+            corpus_files: An iterable of files
+            token_filters: An iterable of TokenFilter instances
+        """
         self._init_()
         for f in corpus_files:
             if not os.path.exists(f):
@@ -128,7 +153,7 @@ class AbstractTokenizer(abc.ABC):
                     line = line.strip('\n').strip()
                     if not line:
                         continue
-                    self._process_line(line)
+                    self._process_line(line, token_filters)
 
         self._build()
 

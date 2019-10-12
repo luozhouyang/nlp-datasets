@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="nlp_datasets",
-    version="1.0.1",
+    version="1.0.2",
     description="A dataset utils repository based on tf.data. For tensorflow 2.x only!",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=[
-        'tensorflow >= 2.0',
+
     ],
     license="MIT License",
     classifiers=(

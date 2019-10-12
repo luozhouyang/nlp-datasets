@@ -6,4 +6,4 @@ from nlp_datasets.xy_dataset import XYSameFileDataset, XYSeparateFileDataset
 from nlp_datasets.xyz_dataset import XYZSameFileDataset, XYZSeparateFileDataset
 
 name = 'nlp_datasets'
-__version__ = '1.0.1'
+__version__ = '1.0.2'

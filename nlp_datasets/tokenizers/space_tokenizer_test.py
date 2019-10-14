@@ -39,6 +39,8 @@ class SpaceTokenizerTest(unittest.TestCase):
     def testSaveVocabFile(self):
         tokenizer = self.buildTokenizer()
         tokenizer.save_to_vocab(data_dir_utils.get_data_file('vocab.test.txt'))
+        print(tokenizer.token2id_dict)
+        print(tokenizer.id2token_dict)
 
     def testBuildFromVocab(self):
         print('============start build from vocab=============')
@@ -61,7 +63,10 @@ class XYSpaceTokenizerTest(SpaceTokenizerTest):
         tokenizer = XYSpaceTokenizer()
         corpus = ['iwslt15.tst2013.100.en']
         corpus = [data_dir_utils.get_data_file(f) for f in corpus]
-        tokenizer.build_from_corpus(corpus, token_filters=[EmptyTokenFilter()])
+        tokenizer.build_from_corpus(corpus, max_vocab_size=200, token_filters=[EmptyTokenFilter()])
+        print('sos id: ', tokenizer.sos_id)
+        print('eos id: ', tokenizer.eos_id)
+        print('vocab size: ', tokenizer.vocab_size)
         return tokenizer
 
 
@@ -72,6 +77,9 @@ class XYZSpaceTokenizerTest(SpaceTokenizerTest):
         corpus = ['iwslt15.tst2013.100.en']
         corpus = [data_dir_utils.get_data_file(f) for f in corpus]
         tokenizer.build_from_corpus(corpus, token_filters=[EmptyTokenFilter()])
+        print('sos id: ', tokenizer.sos_id)
+        print('eos id: ', tokenizer.eos_id)
+        print('vocab size: ', tokenizer.vocab_size)
         return tokenizer
 
 

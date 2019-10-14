@@ -3,6 +3,7 @@ import logging
 import os
 
 import tensorflow as tf
+from collections import Counter
 
 
 class AbstractTokenizer(abc.ABC):
@@ -14,8 +15,20 @@ class AbstractTokenizer(abc.ABC):
             default_config.update(config)
         self.config = default_config
 
-        self._vocab_size_include_special_tokens = None
-        self._init_()
+        self._special_tokens = [
+            self.config['unk_token'],
+            self.config['sos_token'],
+            self.config['eos_token'],
+            self.config['cls_token'],
+            self.config['sep_token'],
+            self.config['mask_token']
+        ]
+
+        self.counter = Counter()
+        self._id2token_dict = None
+        self._token2id_dict = None
+        self._id2token_table = None
+        self._token2id_table = None
 
     def _process_line(self, line, token_filters=None):
         """Process line by line in file.
@@ -26,17 +39,9 @@ class AbstractTokenizer(abc.ABC):
         """
         raise NotImplementedError()
 
-    def _init_(self):
-        self._vocab_size_include_unk = 1  # unk
-        self._vocab_size_include_special_tokens = 1  # unk
-        self._id2token_dict = {0: self.unk_token}
-        self._token2id_dict = {self.unk_token: 0}
-        self._id2token_table = None
-        self._token2id_table = None
-
     @property
     def vocab_size(self):
-        return self._vocab_size_include_special_tokens
+        return len(self._token2id_dict)
 
     @property
     def unk_id(self):
@@ -48,9 +53,7 @@ class AbstractTokenizer(abc.ABC):
 
     @property
     def sos_id(self):
-        if not self.config['add_sos']:
-            return None
-        return self._vocab_size_include_unk
+        return self._token2id_dict.get(self.config['sos_token'], None)
 
     @property
     def sos_token(self):
@@ -60,9 +63,7 @@ class AbstractTokenizer(abc.ABC):
 
     @property
     def eos_id(self):
-        if not self.config['add_eos']:
-            return None
-        return self._vocab_size_include_unk + 1
+        return self._token2id_dict.get(self.config['eos_token'], None)
 
     @property
     def eos_token(self):
@@ -72,9 +73,7 @@ class AbstractTokenizer(abc.ABC):
 
     @property
     def cls_id(self):
-        if not self.config['add_cls']:
-            return None
-        return self._vocab_size_include_unk + 2
+        return self._token2id_dict.get(self.config['cls_token'], None)
 
     @property
     def cls_token(self):
@@ -84,9 +83,7 @@ class AbstractTokenizer(abc.ABC):
 
     @property
     def sep_id(self):
-        if not self.config['add_sep']:
-            return None
-        return self._vocab_size_include_unk + 3
+        return self._token2id_dict.get(self.config['sep_token'], None)
 
     @property
     def sep_token(self):
@@ -96,9 +93,7 @@ class AbstractTokenizer(abc.ABC):
 
     @property
     def mask_id(self):
-        if not self.config['add_mask']:
-            return None
-        return self._vocab_size_include_unk + 4
+        return self._token2id_dict.get(self.config['mask_token'], None)
 
     @property
     def mask_token(self):
@@ -122,79 +117,89 @@ class AbstractTokenizer(abc.ABC):
         """Decode ids to string tokens."""
         return self._id2token_table.lookup(ids)
 
-    def build_from_corpus(self, corpus_files, token_filters=None):
+    def _reset(self):
+        self.counter.clear()
+        self._id2token_dict = dict()
+        self._token2id_dict = dict()
+        logging.info('Tokenizer reset.')
+
+    def build_from_corpus(self, corpus_files, max_vocab_size=None, token_filters=None):
         """Build lookup table and vocab dict from corpus files.
 
         Args:
             corpus_files: An iterable of files
+            max_vocab_size: Max size of vocab, not including special tokens like unk|sos|eos and so on.
             token_filters: An iterable of TokenFilter instances
         """
-        self._init_()
+        self._reset()
+
         for f in corpus_files:
             if not os.path.exists(f):
                 logging.warning('File %s does not exist.' % f)
                 continue
             with open(f, mode='rt', encoding='utf8') as fin:
                 for line in fin:
-                    line = line.strip('\n').strip()
+                    line = line.strip('\n')
                     if not line:
                         continue
                     self._process_line(line, token_filters)
 
-        self._build()
+        self._token2id_dict = {self.config['unk_token']: 0}
+
+        # select most common vocabs
+        for k, v in self.counter.most_common(max_vocab_size):
+            self._token2id_dict[k] = len(self._token2id_dict)
+
+        logging.info("Vocab size including unk is: %d" % len(self._token2id_dict))
+        self._add_special_tokens(self._token2id_dict)
+        logging.info("Vocab size including special tokens is: %d" % len(self._token2id_dict))
+
+        for k, v in self._token2id_dict.items():
+            self._id2token_dict[v] = k
+
+        self._init_lookup_tables(self._token2id_dict, self._id2token_dict)
+        logging.info("Build tokenizer from corpus files finished.")
 
     def build_from_vocab(self, vocab_file):
-        """Build lookup table from vocab file. Each line of vocab is `id    token`"""
-        self._init_()
+        """Build lookup table from vocab file."""
+        self._reset()
+
         with open(vocab_file, mode='rt', encoding='utf8') as fin:
             for line in fin:
                 line = line.strip('\n').strip()
                 if not line:
                     continue
-                tokens = line.split('\t')
-                if len(tokens) != 2:
-                    logging.warning('Invalid vocab line: %s' % line)
+                if line in self._special_tokens:
                     continue
-                _id = int(tokens[0])
-                token = tokens[1]
-                self._id2token_dict[_id] = token
-                self._token2id_dict[token] = _id
+                self._token2id_dict[line] = len(self._token2id_dict)
 
-        assert len(self._token2id_dict.keys()) == len(self._id2token_dict.keys())
-        self._vocab_size_include_special_tokens = len(self._token2id_dict.keys())
+        logging.info("Vocab size including unk is: %d" % len(self._token2id_dict))
+        self._add_special_tokens(self._token2id_dict)
+        logging.info("Vocab size including special tokens is: %d" % len(self._token2id_dict))
+
+        for k, v in self._token2id_dict.items():
+            self._id2token_dict[v] = k
+
         # init lookup tables
-        self._init_lookup_tables()
+        self._init_lookup_tables(self._token2id_dict, self._id2token_dict)
+        logging.info("Build tokenizer from vocab file finished.")
 
-    def _build(self):
-        assert len(self._token2id_dict.keys()) == len(self._id2token_dict.keys())
-        self._vocab_size_include_unk = len(self._token2id_dict.keys())
-
-        # add special tokens
+    def _add_special_tokens(self, token2id):
         if self.config['add_sos']:
-            self._token2id_dict[self.sos_token] = self.sos_id
-            self._id2token_dict[self.sos_id] = self.sos_token
+            token2id[self.config['sos_token']] = len(token2id)
         if self.config['add_eos']:
-            self._token2id_dict[self.eos_token] = self.eos_id
-            self._id2token_dict[self.eos_id] = self.eos_token
+            token2id[self.config['eos_token']] = len(token2id)
         if self.config['add_cls']:
-            self._token2id_dict[self.cls_token] = self.cls_id
-            self._id2token_dict[self.cls_id] = self.cls_token
+            token2id[self.config['cls_token']] = len(token2id)
         if self.config['add_sep']:
-            self._token2id_dict[self.sep_token] = self.sep_id
-            self._id2token_dict[self.sep_id] = self.sep_token
+            token2id[self.config['sep_token']] = len(token2id)
         if self.config['add_mask']:
-            self._token2id_dict[self.mask_token] = self.mask_id
-            self._id2token_dict[self.mask_id] = self.mask_token
+            token2id[self.config['mask_token']] = len(token2id)
 
-        assert len(self._token2id_dict.keys()) == len(self._id2token_dict.keys())
-        self._vocab_size_include_special_tokens = len(self._token2id_dict.keys())
-        # init lookup tables
-        self._init_lookup_tables()
-
-    def _init_lookup_tables(self):
+    def _init_lookup_tables(self, token2id_dict, id2token_dict):
         token2id_initializer = tf.lookup.KeyValueTensorInitializer(
-            keys=list(self._token2id_dict.keys()),
-            values=list(self._token2id_dict.values()),
+            keys=list(token2id_dict.keys()),
+            values=list(token2id_dict.values()),
             key_dtype=tf.dtypes.string,
             value_dtype=tf.dtypes.int64)
         self._token2id_table = tf.lookup.StaticHashTable(
@@ -203,8 +208,8 @@ class AbstractTokenizer(abc.ABC):
             name='token2id_lookup_table')
 
         id2token_initializer = tf.lookup.KeyValueTensorInitializer(
-            keys=list(self._id2token_dict.keys()),
-            values=list(self._id2token_dict.values()),
+            keys=list(id2token_dict.keys()),
+            values=list(id2token_dict.values()),
             key_dtype=tf.dtypes.int64,
             value_dtype=tf.dtypes.string)
         self._id2token_table = tf.lookup.StaticHashTable(
@@ -214,8 +219,9 @@ class AbstractTokenizer(abc.ABC):
 
     def save_to_vocab(self, output_file):
         with open(output_file, mode='wt', encoding='utf8') as fout:
-            for k, v in sorted(self._id2token_dict.items(), key=lambda it: it[0]):
-                fout.write(str(k) + '\t' + str(v) + '\n')
+            for k, v in self._id2token_dict.items():
+                fout.write(str(v) + '\n')
+        logging.info("Vocab saved in %s" % output_file)
 
     @staticmethod
     def _get_default_config():

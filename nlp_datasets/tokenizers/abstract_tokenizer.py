@@ -5,20 +5,6 @@ import os
 import tensorflow as tf
 
 
-class TokenizerFilter(abc.ABC):
-
-    def drop_token(self, token):
-        """Drop this token from vocab file or not.
-
-        Args:
-            token: Tokenized word
-
-        Returns:
-            A python Boolean. True if drop this word, False else.
-        """
-        raise NotImplementedError()
-
-
 class AbstractTokenizer(abc.ABC):
     """Tokenizer for language. The first line of vocab file is always `0   <UNK>`."""
 

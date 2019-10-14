@@ -17,12 +17,15 @@ class SpaceTokenizer(AbstractTokenizer):
 
     def _process_line(self, line, token_filters=None):
         for w in line.split(' '):
+            w = w.strip()
+            if not w:
+                continue
             if w in self._special_tokens:
                 continue
             if w in self._token2id_dict:
                 continue
             if token_filters:
-                if any(f.drop_token(w) for f in token_filters):
+                if any(f.drop(w) for f in token_filters):
                     continue
             self._token2id_dict[w] = self._index
             self._id2token_dict[self._index] = w
@@ -37,12 +40,15 @@ class XYSpaceTokenizer(SpaceTokenizer):
         seqs = line.split(self.config['line_sep'])  # [x, y] or [x, y, z]
         for seq in seqs[0:2]:  # [x, y]
             for w in seq.split(' '):
+                w = w.strip()
+                if not w:
+                    continue
                 if w in self._special_tokens:
                     continue
                 if w in self._token2id_dict:
                     continue
                 if token_filters:
-                    if any(f.drop_token(w) for f in token_filters):
+                    if any(f.drop(w) for f in token_filters):
                         continue
                 self._token2id_dict[w] = self._index
                 self._id2token_dict[self._index] = w

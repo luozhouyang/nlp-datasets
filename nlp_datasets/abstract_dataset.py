@@ -39,6 +39,7 @@ class AbstractDataset(abc.ABC):
         c = {
             'add_sos': True,
             'add_eos': True,
+            'padding_by_eos': False,  # padding sequence by eos_token if True, unk_token else.
         }
         return c
 
@@ -142,7 +143,7 @@ class AbstractXYDataset(AbstractDataset):
         x_padded_shape = x_max_len if x_max_len > 0 else None
         y_max_len = self.config['y_max_len']
         y_padded_shape = y_max_len if y_max_len > 0 else None
-        if self.config['add_eos']:
+        if self.config['padding_by_eos']:
             x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
             y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
         else:
@@ -158,7 +159,7 @@ class AbstractXYDataset(AbstractDataset):
     def _padding_and_batching_for_predict(self, dataset, batch_size):
         x_max_len = self.config['x_max_len']
         x_padded_shape = x_max_len if x_max_len > 0 else None
-        if self.config['add_eos']:
+        if self.config['padding_by_eos']:
             x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
         else:
             x_padding_value = tf.constant(self.x_tokenizer.unk_id, dtype=tf.dtypes.int64)
@@ -363,7 +364,8 @@ class AbstractXYZDataset(AbstractDataset):
         x_padded_shape = x_max_len if x_max_len > 0 else None
         y_max_len = self.config['y_max_len']
         y_padded_shape = y_max_len if y_max_len > 0 else None
-        if self.config['add_eos']:
+        # padding sequence by sos or unk
+        if self.config['padding_by_eos']:
             x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
             y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
         else:
@@ -388,7 +390,7 @@ class AbstractXYZDataset(AbstractDataset):
         x_padded_shape = x_max_len if x_max_len > 0 else None
         y_max_len = self.config['y_max_len']
         y_padded_shape = y_max_len if y_max_len > 0 else None
-        if self.config['add_eos']:
+        if self.config['padding_by_eos']:
             x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
             y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
         else:

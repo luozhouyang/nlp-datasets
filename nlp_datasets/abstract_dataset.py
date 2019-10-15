@@ -40,6 +40,7 @@ class AbstractDataset(abc.ABC):
             'add_sos': True,
             'add_eos': True,
             'padding_by_eos': False,  # padding sequence by eos_token if True, unk_token else.
+            'drop_remainder': False,
         }
         return c
 
@@ -153,7 +154,8 @@ class AbstractXYDataset(AbstractDataset):
         dataset = dataset.padded_batch(
             batch_size=batch_size,
             padded_shapes=([x_padded_shape], [y_padded_shape]),
-            padding_values=(x_padding_value, y_padding_value))
+            padding_values=(x_padding_value, y_padding_value),
+            drop_remainder=self.config['drop_remainder'])
         return dataset
 
     def _padding_and_batching_for_predict(self, dataset, batch_size):
@@ -375,7 +377,8 @@ class AbstractXYZDataset(AbstractDataset):
         dataset = dataset.padded_batch(
             batch_size=batch_size,
             padding_values=(x_padding_value, y_padding_value, tf.constant(0, dtype=tf.dtypes.int64)),
-            padded_shapes=([x_padded_shape], [y_padded_shape], [])
+            padded_shapes=([x_padded_shape], [y_padded_shape], []),
+            drop_remainder=self.config['drop_remainder']
         ).prefetch(self.config['prefetch_size'])
 
         # map (x,y,z) to ((x,y),z) cause (x,y) are two inputs of model.

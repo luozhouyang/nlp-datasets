@@ -2,8 +2,7 @@ import unittest
 
 import tensorflow as tf
 
-from nlp_datasets.tokenizers import EmptyTokenFilter
-from nlp_datasets.tokenizers import SpaceTokenizer, XYSpaceTokenizer, XYZSpaceTokenizer
+from nlp_datasets.tokenizers import EmptyTokenFilter, SpaceTokenizer
 from nlp_datasets.utils import data_dir_utils
 
 
@@ -55,32 +54,6 @@ class SpaceTokenizerTest(unittest.TestCase):
         v1 = tokenizer.decode(ids)
         print(v1)
         print('============end build from vocab=============')
-
-
-class XYSpaceTokenizerTest(SpaceTokenizerTest):
-
-    def buildTokenizer(self):
-        tokenizer = XYSpaceTokenizer()
-        corpus = ['iwslt15.tst2013.100.en']
-        corpus = [data_dir_utils.get_data_file(f) for f in corpus]
-        tokenizer.build_from_corpus(corpus, max_vocab_size=200, token_filters=[EmptyTokenFilter()])
-        print('sos id: ', tokenizer.sos_id)
-        print('eos id: ', tokenizer.eos_id)
-        print('vocab size: ', tokenizer.vocab_size)
-        return tokenizer
-
-
-class XYZSpaceTokenizerTest(SpaceTokenizerTest):
-
-    def buildTokenizer(self):
-        tokenizer = XYZSpaceTokenizer()
-        corpus = ['iwslt15.tst2013.100.en']
-        corpus = [data_dir_utils.get_data_file(f) for f in corpus]
-        tokenizer.build_from_corpus(corpus, token_filters=[EmptyTokenFilter()])
-        print('sos id: ', tokenizer.sos_id)
-        print('eos id: ', tokenizer.eos_id)
-        print('vocab size: ', tokenizer.vocab_size)
-        return tokenizer
 
 
 if __name__ == '__main__':

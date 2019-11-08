@@ -12,6 +12,9 @@ class XYSameFileDataset(AbstractXYDataset):
             dataset = dataset.flat_map(lambda f: tf.data.TextLineDataset(f).skip(self.config['skip_count']))
         else:
             dataset = tf.data.TextLineDataset(files)
+        # repeat the dataset
+        if self.config['repeat']:
+            dataset = dataset.repeat(self.config['repeat'])
         return dataset
 
     def _build_dataset_from_files(self, files):
@@ -52,7 +55,8 @@ class XYSameFileDataset(AbstractXYDataset):
         parent = super(XYSameFileDataset, self)._get_default_config()
         parent.update({
             'xy_sep': '@',  # split x and y
-            'skip_count': 0,  # may useful when need to skip head line in files
+            'skip_count': 0,  # may useful when need to skip head line in files,
+            'repeat': 1,  # repeating the dataset
         })
         return parent
 
@@ -66,6 +70,9 @@ class XYSeparateFileDataset(AbstractXYDataset):
             dataset = dataset.flat_map(lambda f: tf.data.TextLineDataset(f).skip(self.config['skip_count']))
         else:
             dataset = tf.data.TextLineDataset(files)
+        # repeat the dataset
+        if self.config['repeat']:
+            dataset = dataset.repeat(self.config['repeat'])
         return dataset
 
     def _build_dataset_from_files(self, files):
@@ -101,5 +108,6 @@ class XYSeparateFileDataset(AbstractXYDataset):
         parent = super(XYSeparateFileDataset, self)._get_default_config()
         parent.update({
             'skip_count': 0,  # may useful when need to skip head line in files
+            'repeat': 1,  # repeating the dataset
         })
         return parent

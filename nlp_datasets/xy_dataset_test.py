@@ -26,6 +26,7 @@ class XYDatasetTest(unittest.TestCase):
             'sequence_sep': ' ',
             'x_max_len': -1,
             'y_max_len': -1,
+            'repeat': 10,
         }
         ds = XYSameFileDataset(x_tokenizer, y_tokenizer, config=config)
         files = [data_dir_utils.get_data_file('iwslt15.tst2013.100.envi')]
@@ -48,6 +49,7 @@ class XYDatasetTest(unittest.TestCase):
             'sequence_sep': ' ',
             'x_max_len': -1,
             'y_max_len': -1,
+            'repeat': 10,
         }
         ds = XYSeparateFileDataset(x_tokenizer, y_tokenizer, config)
         files = ([data_dir_utils.get_data_file('iwslt15.tst2013.100.en')],

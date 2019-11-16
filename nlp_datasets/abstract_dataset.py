@@ -139,24 +139,39 @@ class AbstractXYDataset(AbstractDataset):
             ).prefetch(self.config['prefetch_size'])
         return dataset
 
-    def _padding_and_batching(self, dataset, batch_size):
-        x_max_len = self.config['x_max_len']
-        x_padded_shape = x_max_len if x_max_len > 0 else None
-        y_max_len = self.config['y_max_len']
-        y_padded_shape = y_max_len if y_max_len > 0 else None
-        if self.config['padding_by_eos']:
-            x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
-            y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
-        else:
-            x_padding_value = tf.constant(self.x_tokenizer.unk_id, dtype=tf.dtypes.int64)
-            y_padding_value = tf.constant(self.y_tokenizer.unk_id, dtype=tf.dtypes.int64)
+    def _padding_and_batching(self, dataset, batch_size, bucket_width=10):
+        # batching
+        def _batch_fn(x):
+            x_max_len = self.config['x_max_len']
+            x_padded_shape = x_max_len if x_max_len > 0 else None
+            y_max_len = self.config['y_max_len']
+            y_padded_shape = y_max_len if y_max_len > 0 else None
+            if self.config['padding_by_eos']:
+                x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
+                y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
+            else:
+                x_padding_value = tf.constant(self.x_tokenizer.unk_id, dtype=tf.dtypes.int64)
+                y_padding_value = tf.constant(self.y_tokenizer.unk_id, dtype=tf.dtypes.int64)
 
-        dataset = dataset.padded_batch(
-            batch_size=batch_size,
-            padded_shapes=([x_padded_shape], [y_padded_shape]),
-            padding_values=(x_padding_value, y_padding_value),
-            drop_remainder=self.config['drop_remainder'])
-        return dataset
+            x = x.padded_batch(
+                batch_size=batch_size,
+                padded_shapes=([x_padded_shape], [y_padded_shape]),
+                padding_values=(x_padding_value, y_padding_value),
+                drop_remainder=self.config['drop_remainder'])
+            return x
+
+        def _key_fn(x, y):
+            # x -> src sequence, y -> target sequence, corresponding to dataset's two element
+            bucket_id = tf.maximum(tf.size(x) // bucket_width, tf.size(y) // bucket_width)
+            return tf.cast(bucket_id, tf.dtypes.int64)
+
+        def _reduce_fn(k, x):
+            # k -> unused key, x -> dataset
+            return _batch_fn(x)
+
+        bucket_fn = tf.data.experimental.group_by_window(
+            key_func=_key_fn, reduce_func=_reduce_fn, window_size=batch_size)
+        return dataset.apply(bucket_fn)
 
     def _padding_and_batching_for_predict(self, dataset, batch_size):
         x_max_len = self.config['x_max_len']
@@ -188,7 +203,8 @@ class AbstractXYDataset(AbstractDataset):
         dataset = self._convert_tokens_to_ids(dataset)
         dataset = self._add_special_tokens(dataset)
         batch_size = self.config['train_batch_size']
-        dataset = self._padding_and_batching(dataset, batch_size)
+        bucket_width = self.config['bucket_width']
+        dataset = self._padding_and_batching(dataset, batch_size, bucket_width)
         return dataset
 
     def build_eval_dataset(self, eval_files):
@@ -207,7 +223,8 @@ class AbstractXYDataset(AbstractDataset):
         dataset = self._convert_tokens_to_ids(dataset)
         dataset = self._add_special_tokens(dataset)
         batch_size = self.config['eval_batch_size']
-        dataset = self._padding_and_batching(dataset, batch_size)
+        bucket_size = self.config['bucket_width']
+        dataset = self._padding_and_batching(dataset, batch_size, bucket_size)
         return dataset
 
     def build_predict_dataset(self, predict_files):
@@ -262,6 +279,7 @@ class AbstractXYDataset(AbstractDataset):
             'train_batch_size': 32,
             'eval_batch_size': 32,
             'predict_batch_size': 32,
+            'bucket_width': 10,
         })
         return parent
 
@@ -361,32 +379,47 @@ class AbstractXYZDataset(AbstractDataset):
             ).prefetch(self.config['prefetch_size'])
         return dataset
 
-    def _padding_and_batching(self, dataset, batch_size):
-        x_max_len = self.config['x_max_len']
-        x_padded_shape = x_max_len if x_max_len > 0 else None
-        y_max_len = self.config['y_max_len']
-        y_padded_shape = y_max_len if y_max_len > 0 else None
-        # padding sequence by sos or unk
-        if self.config['padding_by_eos']:
-            x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
-            y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
-        else:
-            x_padding_value = tf.constant(self.x_tokenizer.unk_id, dtype=tf.dtypes.int64)
-            y_padding_value = tf.constant(self.y_tokenizer.unk_id, dtype=tf.dtypes.int64)
+    def _padding_and_batching(self, dataset, batch_size, bucket_width=10):
+        # batching
+        def _batch_fn(x):
+            x_max_len = self.config['x_max_len']
+            x_padded_shape = x_max_len if x_max_len > 0 else None
+            y_max_len = self.config['y_max_len']
+            y_padded_shape = y_max_len if y_max_len > 0 else None
+            # padding sequence by sos or unk
+            if self.config['padding_by_eos']:
+                x_padding_value = tf.constant(self.x_tokenizer.eos_id, dtype=tf.dtypes.int64)
+                y_padding_value = tf.constant(self.y_tokenizer.eos_id, dtype=tf.dtypes.int64)
+            else:
+                x_padding_value = tf.constant(self.x_tokenizer.unk_id, dtype=tf.dtypes.int64)
+                y_padding_value = tf.constant(self.y_tokenizer.unk_id, dtype=tf.dtypes.int64)
 
-        dataset = dataset.padded_batch(
-            batch_size=batch_size,
-            padding_values=(x_padding_value, y_padding_value, tf.constant(0, dtype=tf.dtypes.int64)),
-            padded_shapes=([x_padded_shape], [y_padded_shape], []),
-            drop_remainder=self.config['drop_remainder']
-        ).prefetch(self.config['prefetch_size'])
+            x = x.padded_batch(
+                batch_size=batch_size,
+                padding_values=(x_padding_value, y_padding_value, tf.constant(0, dtype=tf.dtypes.int64)),
+                padded_shapes=([x_padded_shape], [y_padded_shape], []),
+                drop_remainder=self.config['drop_remainder']
+            ).prefetch(self.config['prefetch_size'])
 
-        # map (x,y,z) to ((x,y),z) cause (x,y) are two inputs of model.
-        dataset = dataset.map(
-            lambda x, y, z: ((x, y), z),
-            num_parallel_calls=self.config['num_parallel_calls']
-        ).prefetch(self.config['prefetch_size'])
-        return dataset
+            # map (x,y,z) to ((x,y),z) cause (x,y) are two inputs of model.
+            x = x.map(
+                lambda x, y, z: ((x, y), z),
+                num_parallel_calls=self.config['num_parallel_calls']
+            ).prefetch(self.config['prefetch_size'])
+            return x
+
+        def _key_fn(x, y, z):
+            # x -> src sequence, y -> tgt sequence, z -> label
+            bucket_id = tf.maximum(tf.size(x) // bucket_width, tf.size(y) // bucket_width)
+            return tf.cast(bucket_id, tf.dtypes.int64)
+
+        def _reduce_fn(k, x):
+            # k -> unused key, x -> dataset
+            return _batch_fn(x)
+
+        bucket_fn = tf.data.experimental.group_by_window(
+            key_func=_key_fn, reduce_func=_reduce_fn, window_size=batch_size)
+        return dataset.apply(bucket_fn)
 
     def _padding_and_batching_for_predict(self, dataset, batch_size):
         x_max_len = self.config['x_max_len']
@@ -420,7 +453,9 @@ class AbstractXYZDataset(AbstractDataset):
         dataset = self._filter_dataset(dataset)
         dataset = self._convert_tokens_to_ids(dataset)
         dataset = self._add_special_tokens(dataset)
-        dataset = self._padding_and_batching(dataset, self.config['train_batch_size'])
+        batch_size = self.config['train_batch_size']
+        bucket_width = self.config['bucket_width']
+        dataset = self._padding_and_batching(dataset, batch_size, bucket_width)
         return dataset
 
     def build_eval_dataset(self, eval_files):
@@ -430,7 +465,9 @@ class AbstractXYZDataset(AbstractDataset):
         dataset = self._filter_dataset(dataset)
         dataset = self._convert_tokens_to_ids(dataset)
         dataset = self._add_special_tokens(dataset)
-        dataset = self._padding_and_batching(dataset, self.config['eval_batch_size'])
+        batch_size = self.config['eval_batch_size']
+        bucket_width = self.config['bucket_width']
+        dataset = self._padding_and_batching(dataset, batch_size, bucket_width)
         return dataset
 
     def build_predict_dataset(self, predict_files):
@@ -461,5 +498,6 @@ class AbstractXYZDataset(AbstractDataset):
             'train_batch_size': 32,
             'eval_batch_size': 32,
             'predict_batch_size': 32,
+            'bucket_width': 10,
         })
         return parent

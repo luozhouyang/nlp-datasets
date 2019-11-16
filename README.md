@@ -21,7 +21,9 @@ from nlp_datasets import XYSameFileDataset
 from nlp_datasets import SpaceTokenizer
 
 tokenizer = SpaceTokenizer()
+corpus_files = ['/path/to/corpus']
+tokenizer.build_from_corpus(corpus_files, max_vocab_size=10000)
 dataset = XYSameFileDataset(x_tokenizer=tokenizer, y_tokenizer=tokenizer, config=None)
-train_files = [...]
+train_files = ['/path/to/train/files']
 train_dataset = dataset.build_train_dataset(train_files=train_files)
 ```

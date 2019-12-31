@@ -1,0 +1,2 @@
+I love it.@1
+I do not like it.@0

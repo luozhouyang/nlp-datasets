@@ -6,4 +6,4 @@ from nlp_datasets.tokenizers import NumbersTokenFilter, RegexTokenFilter
 from nlp_datasets.tokenizers import TokenFilter, EmptyTokenFilter, LengthTokenFilter
 
 name = 'nlp_datasets'
-__version__ = '1.2.1'
+__version__ = '1.3.0'

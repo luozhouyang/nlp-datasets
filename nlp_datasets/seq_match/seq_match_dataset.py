@@ -184,8 +184,6 @@ class SeqMatchDataset(Dataset):
                     lambda x: (tf.strings.split([x], sep=self.config['xyz_sep']).values[0],
                                tf.strings.split([x], sep=self.config['xyz_sep']).values[1]),
                     num_parallel_calls=self.config['num_parallel_calls'])
-                if self.config['repeat']:
-                    d = d.repeat(self.config['repeat'])
                 return d
             if all(isinstance(f, tuple) for f in files):  # files: [(x_file_0, y_file_0), (x_file_1, y_file_1,), ...]
                 d = tf.data.Dataset.from_tensor_slices(files)
@@ -196,8 +194,6 @@ class SeqMatchDataset(Dataset):
                         (tf.data.TextLineDataset(x).skip(self.config['skip_count']),
                          tf.data.TextLineDataset(y).skip(self.config['skip_count']))
                     ))
-                if self.config['repeat']:
-                    d = d.repeat(self.config['repeat'])
                 return d
             raise ValueError(
                 r"Argument `files` must be one of the following formats:"

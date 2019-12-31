@@ -1,6 +1,6 @@
-from ..dataset import Dataset
-
 import tensorflow as tf
+
+from ..dataset import Dataset
 
 
 class Seq2SeqDataset(Dataset):
@@ -204,25 +204,11 @@ class Seq2SeqDataset(Dataset):
         return dataset
 
     def _get_default_config(self):
+        base = super(Seq2SeqDataset, self)._get_default_config()
         config = {
             'xy_sep': '@',
             'sep': ' ',
             'x_max_len': -1,
             'y_max_len': -1,
-            'buffer_size': 10000000,
-            'seed': None,
-            'reshuffle_each_iteration': True,
-            'prefetch_size': tf.data.experimental.AUTOTUNE,
-            'num_parallel_calls': tf.data.experimental.AUTOTUNE,
-            'add_sos': True,
-            'add_eos': True,
-            'skip_count': 0,
-            'padding_by_eos': False,
-            'drop_remainder': True,
-            'bucket_width': 10,
-            'train_batch_size': 32,
-            'eval_batch_size': 32,
-            'predict_batch_size': 32,
-            'repeat': 1,
         }
-        return config
+        return dict(list(base.items()) + list(config.items()))
